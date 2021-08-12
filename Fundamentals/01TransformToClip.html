@@ -1,0 +1,142 @@
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>TransformToClip</title>
+</head>
+<style>
+  canvas {
+    border: 1px solid black;
+  }
+</style>
+
+<body>
+  <canvas id="c"></canvas>
+</body>
+
+</html>
+<script>
+  'use strict';
+  // -------初始化着色程序---------
+
+  const canvas = document.querySelector('canvas');
+  const gl = canvas.getContext('webgl2');
+
+  const vsGLSL = `#version 300 es
+in vec4 position; 
+in vec4 color;
+uniform vec2 u_resolution;
+
+flat out vec4 v_color;
+
+void main() {
+  vec2 clipPosition = position.xy/u_resolution*2.0-1.0;
+  clipPosition *= vec2(1,-1);
+  gl_Position = vec4(clipPosition.xy,0,1);
+  v_color = color;
+}
+`;
+
+  const fsGLSL = `#version 300 es
+precision highp float;
+
+flat in vec4 v_color;
+out vec4 outColor;
+
+void main() {
+    outColor = v_color;
+}
+`;
+
+  const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vsGLSL);
+  gl.compileShader(vertexShader);
+  if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(vertexShader))
+  };
+
+  const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fsGLSL);
+  gl.compileShader(fragmentShader);
+  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(fragmentShader))
+  };
+
+  const prg = gl.createProgram();
+  gl.attachShader(prg, vertexShader);
+  gl.attachShader(prg, fragmentShader);
+  gl.linkProgram(prg);
+  if (!gl.getProgramParameter(prg, gl.LINK_STATUS)) {
+    throw new Error(gl.getProgramInfoLog(prg))
+  };
+
+  // -------准备数据--------
+  const positionLoc = gl.getAttribLocation(prg, 'position');
+  const colorLoc = gl.getAttribLocation(prg, 'color');
+  const resolutionLoc = gl.getUniformLocation(prg, 'u_resolution');
+
+  const lineVAO = gl.createVertexArray();
+  gl.bindVertexArray(lineVAO)
+
+  // 裁剪空间
+  const vertexsPositions = new Float32Array
+    ([
+      0, 0,
+      100, 0,
+      50, 150,
+      300, 150,
+      300, 50,
+      50, 150,
+      300, 0,
+      300, 50,
+      100, 0,
+    ]);
+
+  const vertexColors = new Uint8Array([
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+    0, 0, 255, 255,
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+    255, 0, 0, 255,
+  ]);
+
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertexsPositions, gl.STATIC_DRAW);
+
+  const colorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertexColors, gl.STATIC_DRAW);
+
+  gl.enableVertexAttribArray(positionLoc);
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.vertexAttribPointer(
+    positionLoc,
+    2,
+    gl.FLOAT,
+    false,
+    0,
+    0
+  );
+
+  gl.enableVertexAttribArray(colorLoc);
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  gl.vertexAttribPointer
+    (
+      colorLoc,
+      4,
+      gl.UNSIGNED_BYTE,
+      true,
+      0,
+      0
+    );
+
+  // -------开始绘制--------
+  gl.useProgram(prg);
+  gl.uniform2f(resolutionLoc, gl.canvas.width, gl.canvas.height);
+  gl.drawArrays(gl.TRIANGLES, 0, 9);
+</script>
