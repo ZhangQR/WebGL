@@ -1,0 +1,101 @@
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>SmallestLine</title>
+</head>
+<style>
+  canvas {
+    border: 1px solid black;
+  }
+</style>
+
+<body>
+  <canvas id="c"></canvas>
+</body>
+
+</html>
+<script>
+  'use strict';
+  // -------初始化着色程序---------
+
+  const canvas = document.querySelector('canvas');
+  const gl = canvas.getContext('webgl2');
+
+  const vsGLSL = `#version 300 es
+in vec4 position; 
+void main() {
+    gl_Position = position;
+    gl_PointSize = 5.0;
+}
+`;
+
+  const fsGLSL = `#version 300 es
+precision highp float;
+
+out vec4 outColor;
+
+void main() {
+    outColor = vec4(1, 0.5, 0, 1);
+}
+`;
+
+  const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vertexShader, vsGLSL);
+  gl.compileShader(vertexShader);
+  if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(vertexShader))
+  };
+
+  const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fragmentShader, fsGLSL);
+  gl.compileShader(fragmentShader);
+  if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+    throw new Error(gl.getShaderInfoLog(fragmentShader))
+  };
+
+  const prg = gl.createProgram();
+  gl.attachShader(prg, vertexShader);
+  gl.attachShader(prg, fragmentShader);
+  gl.linkProgram(prg);
+  if (!gl.getProgramParameter(prg, gl.LINK_STATUS)) {
+    throw new Error(gl.getProgramInfoLog(prg))
+  };
+
+  // -------准备数据--------
+  const positionLoc = gl.getAttribLocation(prg, 'position');
+
+  const lineVAO = gl.createVertexArray();
+  gl.bindVertexArray(lineVAO)
+
+  // 裁剪空间
+  const d2r = Math.PI / 180;
+  const acpect = gl.canvas.height / gl.canvas.width;
+  const vertexsPositions = new Float32Array
+    ([
+      Math.cos(30 * d2r) * acpect,  Math.sin(30 * d2r),
+      Math.cos(90 * d2r) * acpect,  Math.sin(90 * d2r),
+      Math.cos(150 * d2r) * acpect, Math.sin(150 * d2r),
+      Math.cos(210 * d2r) * acpect, Math.sin(210 * d2r),
+      Math.cos(270 * d2r) * acpect, Math.sin(270 * d2r),
+      Math.cos(330 * d2r) * acpect, Math.sin(330 * d2r)
+    ]);
+
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertexsPositions, gl.STATIC_DRAW);
+
+  gl.enableVertexAttribArray(positionLoc);
+  gl.vertexAttribPointer(
+    positionLoc,
+    2,
+    gl.FLOAT,
+    false,
+    0,
+    0
+  );
+
+  // -------开始绘制--------
+  gl.useProgram(prg);
+  gl.drawArrays(gl.LINES, 0, 6);
+</script>
