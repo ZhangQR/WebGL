@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <link type="text/css" rel="stylesheet" href="01Translation.css">
+  <title>StarMove</title>
+</head>
+
+<body>
+  <div class="description">
+    拖动滑块改变物体位置
+  </div>
+  <canvas id="canvas"></canvas>
+  <div id="uiContainer">
+    <div id="ui">
+      <div id="x"></div>
+      <div id="y"></div>
+    </div>
+  </div>
+</body>
+<script src="../Shared/webgl-utils.js"></script>
+<script src="../Shared/webgl-ui.js"></script>
+<script>
+  'use strict';
+  // -------初始化着色程序---------
+
+  const vertexShaderSource = `#version 300 es
+in vec2 position; 
+uniform vec2 u_resolution;
+uniform vec2 u_translation;
+
+void main() {
+  vec2 newPosition = position + u_translation;
+  vec2 clipPosition = newPosition / u_resolution * 2.0 - 1.0;
+  clipPosition *= vec2(1,-1);
+  gl_Position = vec4(clipPosition,0,1);
+}
+`;
+
+  const fragmentShaderSource = `#version 300 es
+precision highp float;
+
+uniform vec4 u_color;
+out vec4 outColor;
+
+void main() {
+    outColor = u_color;
+}
+`;
+  function main() {
+    // -------创建 gl---------------------------------------------
+    var canvas = document.querySelector('#canvas');
+    var gl = canvas.getContext('webgl2');
+    if (!gl) return;
+    var prg = webglUtils.createProgramFromSources(gl,
+      [vertexShaderSource, fragmentShaderSource]);
+    const lineVAO = gl.createVertexArray();
+    gl.bindVertexArray(lineVAO)
+
+    // -------获得 Attribution Locations--------------------------
+    const positionLoc = gl.getAttribLocation(prg, 'position');
+    const resolutionLoc = gl.getUniformLocation(prg, 'u_resolution');
+    const translationLoc = gl.getUniformLocation(prg, 'u_translation');
+    const colorLoc = gl.getUniformLocation(prg, 'u_color');
+
+    // -------为每个 Attribution 设置数据使用方式-----------------
+    var vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(
+      positionLoc,
+      2,
+      gl.FLOAT,
+      false,
+      0, 0);
+
+    // ------- 设置 Attribution 和 uniform 数据并调用 draw call---
+    var translation = [0, 0];
+    drawScene();
+
+    // -------- 绘制 UI-------------------------------------------
+    webglUI.setupSlider("#x", { slide: updatePosition(0), max: gl.canvas.width });
+    webglUI.setupSlider("#y", { slide: updatePosition(1), max: gl.canvas.height });
+    function updatePosition(index) {
+      return function (event, ui) {
+        translation[index] = ui.value;
+        drawScene();
+      };
+    }
+
+    function drawScene() {
+      webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(prg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      SetStar(gl);
+      gl.uniform2f(translationLoc, translation[0], translation[1]);
+      gl.uniform2f(resolutionLoc, gl.canvas.width, gl.canvas.height);
+      gl.uniform4f(colorLoc, 0.0, 0.6, 1.0, 1.0);
+      gl.drawArrays(gl.TRIANGLES, 0, 9);
+    }
+
+  }
+
+  function SetStar(gl) {
+    const r = 50;
+    var p0 =  [0.951  * r, 0.309  * r];
+    var p1 =  [0.0    * r, 1.0    * r];
+    var p2 =  [-0.951 * r, 0.309  * r];
+    var p3 =  [-0.587 * r, -0.809 * r];
+    var p4 =  [0.587  * r, -0.809 * r];
+    var p01 = [0.225  * r, 0.309  * r];
+    var p12 = [-0.225 * r, 0.309  * r];
+    var p23 = [-0.363 * r, -0.118 * r];
+    var p34 = [0.0    * r, -0.382 * r];
+    var p40 = [0.363  * r, -0.118 * r];
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      p0[0],  p0[1],
+      p2[0],  p2[1],
+      p34[0], p34[1],
+      p1[0],  p1[1],
+      p3[0],  p3[1],
+      p40[0], p40[1],
+      p2[0],  p2[1],
+      p4[0],  p4[1],
+      p01[0], p01[1],
+    ]), gl.STATIC_DRAW);
+    console.log(p0[0], p0[1]);
+  }
+  main();
+</script>
+
+</html>
