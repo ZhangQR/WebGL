@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <link type="text/css" rel="stylesheet" href="01Translation.css">
+  <title>2DTranslation</title>
+</head>
+
+<body>
+  <div class="description">
+    拖动滑块改变物体位置
+  </div>
+  <canvas id="canvas"></canvas>
+  <div id="uiContainer">
+    <div id = "ui">
+      <div id="x"></div>
+      <div id="y"></div>
+    </div>
+  </div>
+</body>
+<script src="../Shared/webgl-utils.js"></script>
+<script src="../Shared/webgl-ui.js"></script>
+<script>
+  'use strict';
+  // -------初始化着色程序---------
+
+  const vertexShaderSource = `#version 300 es
+in vec2 position; 
+uniform vec2 u_resolution;
+
+void main() {
+  vec2 clipPosition = position / u_resolution * 2.0 - 1.0;
+  clipPosition *= vec2(1,-1);
+  gl_Position = vec4(clipPosition,0,1);
+}
+`;
+
+  const fragmentShaderSource = `#version 300 es
+precision highp float;
+
+uniform vec4 u_color;
+out vec4 outColor;
+
+void main() {
+    outColor = u_color;
+}
+`;
+  function main() {
+    // -------创建 gl---------------------------------------------
+    var canvas = document.querySelector('#canvas');
+    var gl = canvas.getContext('webgl2');
+    if (!gl) return;
+    var prg = webglUtils.createProgramFromSources(gl,
+      [vertexShaderSource, fragmentShaderSource]);
+    const lineVAO = gl.createVertexArray();
+    gl.bindVertexArray(lineVAO)
+
+    // -------获得 Attribution Locations--------------------------
+    const positionLoc = gl.getAttribLocation(prg, 'position');
+    const resolutionLoc = gl.getUniformLocation(prg, 'u_resolution');
+    const colorLoc = gl.getUniformLocation(prg, 'u_color');
+
+    // -------为每个 Attribution 设置数据使用方式-----------------
+    var vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(
+      positionLoc,
+      2,
+      gl.FLOAT,
+      false,
+      0, 0);
+
+    // ------- 设置 Attribution 和 uniform 数据并调用 draw call---
+    var rectPosition = [0, 0];
+    drawScene();
+
+    // -------- 绘制 UI-------------------------------------------
+    webglUI.setupSlider("#x", { slide: updatePosition(0), max: gl.canvas.width });
+    webglUI.setupSlider("#y", { slide: updatePosition(1), max: gl.canvas.height });
+    function updatePosition(index) {
+      return function (event, ui) {
+        rectPosition[index] = ui.value;
+        drawScene();
+      };
+    }
+
+    function drawScene() {
+      webglUtils.resizeCanvasToDisplaySize(gl.canvas);
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(prg);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      SetRectangle(gl, rectPosition[0], rectPosition[1], 100, 50);
+      gl.uniform2f(resolutionLoc, gl.canvas.width, gl.canvas.height);
+      gl.uniform4f(colorLoc, 0.0, 0.6, 1.0, 1.0);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+  }
+
+  function SetRectangle(gl, x, y, width, height) {
+    var x1 = x;
+    var x2 = x + width;
+    var y1 = y;
+    var y2 = y + height;
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      x1, y1,
+      x2, y2,
+      x1, y2,
+      x1, y1,
+      x2, y2,
+      x2, y1,
+    ]), gl.STATIC_DRAW);
+  }
+  main();
+</script>
+
+</html>
