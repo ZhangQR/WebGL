@@ -4,21 +4,28 @@
 <head>
   <meta charset="utf-8">
   <link type="text/css" rel="stylesheet" href="01Translation.css">
-  <title>StarMove</title>
+  <title>StarRotationWithAngle</title>
 </head>
 
 <body>
   <div class="description">
-    拖动滑块改变物体位置
+    拖动滑块改变物体位置,旋转
   </div>
   <canvas id="canvas"></canvas>
   <div id="uiContainer">
     <div id="ui">
       <div id="x"></div>
       <div id="y"></div>
+      <div id="angle"></div>
     </div>
   </div>
 </body>
+
+<script src="https://webgl2fundamentals.org/webgl/resources/jquery-1.7.1.min.js"></script>
+<script src="https://webgl2fundamentals.org/webgl/resources/jquery-ui-1.8.16.custom.min.js"></script>
+<script src="https://webgl2fundamentals.org/webgl/resources/jquery.mousecapture.js"></script>
+<script src="https://webgl2fundamentals.org/webgl/resources/jquery-gman-circle.js"></script>
+
 <script src="../Shared/webgl-utils.js"></script>
 <script src="../Shared/webgl-ui.js"></script>
 <script>
@@ -29,9 +36,12 @@
 in vec2 position; 
 uniform vec2 u_resolution;
 uniform vec2 u_translation;
+uniform vec2 u_rotation;
 
 void main() {
-  vec2 newPosition = position + u_translation;
+  vec2 rotated = vec2(position.x*u_rotation.y + position.y*u_rotation.x,
+                      position.y*u_rotation.y-position.x*u_rotation.x);
+  vec2 newPosition = rotated + u_translation;
   vec2 clipPosition = newPosition / u_resolution * 2.0 - 1.0;
   clipPosition *= vec2(1,-1);
   gl_Position = vec4(clipPosition,0,1);
@@ -62,6 +72,7 @@ void main() {
     const positionLoc = gl.getAttribLocation(prg, 'position');
     const resolutionLoc = gl.getUniformLocation(prg, 'u_resolution');
     const translationLoc = gl.getUniformLocation(prg, 'u_translation');
+    const rotationLoc = gl.getUniformLocation(prg, 'u_rotation');
     const colorLoc = gl.getUniformLocation(prg, 'u_color');
 
     // -------为每个 Attribution 设置数据使用方式-----------------
@@ -77,17 +88,29 @@ void main() {
 
     // ------- 设置 Attribution 和 uniform 数据并调用 draw call---
     var translation = [0, 0];
+    var rotation = [0,1];
     drawScene();
 
     // -------- 绘制 UI-------------------------------------------
     webglUI.setupSlider("#x", { slide: updatePosition(0), max: gl.canvas.width });
     webglUI.setupSlider("#y", { slide: updatePosition(1), max: gl.canvas.height });
-    function updatePosition(index) {
+    webglUI.setupSlider("#angle", { slide: updateAngle, max: 360 });
+    
+  function updatePosition(index) {
       return function (event, ui) {
         translation[index] = ui.value;
         drawScene();
       };
     }
+
+  function updateAngle(event, ui) {
+    // 因为 y 轴上有翻转
+    var angleInDegrees = 360 - ui.value;
+    var angleInRadians = angleInDegrees * Math.PI / 180;
+    rotation[0] = Math.sin(angleInRadians);
+    rotation[1] = Math.cos(angleInRadians);
+    drawScene();
+  }
 
     function drawScene() {
       webglUtils.resizeCanvasToDisplaySize(gl.canvas);
@@ -98,6 +121,7 @@ void main() {
       gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
       SetStar(gl);
       gl.uniform2f(translationLoc, translation[0], translation[1]);
+      gl.uniform2f(rotationLoc,rotation[0],rotation[1]);
       gl.uniform2f(resolutionLoc, gl.canvas.width, gl.canvas.height);
       gl.uniform4f(colorLoc, 0.0, 0.6, 1.0, 1.0);
       gl.drawArrays(gl.TRIANGLES, 0, 9);
