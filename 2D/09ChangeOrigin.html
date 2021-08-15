@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <link type="text/css" rel="stylesheet" href="01Translation.css">
-  <title>2D Matrix</title>
+  <title>Change Origin</title>
 </head>
 
 <body>
@@ -35,9 +35,7 @@ uniform mat3 u_matrix;
 uniform vec2 u_resolution;
 
 void main() {
-  // 注意这里的 u_matrix 就是转置之后的
   vec2 newPosition = (u_matrix * vec3(position,1)).xy;
-  //vec2 newPosition = (mat3(1,0,0,0,1,0,100,0,1) * vec3(position,1)).xy;
   vec2 clipPosition = newPosition / u_resolution * 2.0 - 1.0;
   clipPosition *= vec2(1,-1);
   gl_Position = vec4(clipPosition,0,1);
@@ -126,11 +124,13 @@ void main() {
       var scaleMatrix = m3.scale(scale[0],scale[1]);
       var rotationMatrix = m3.rotation(rotation);
       var translationMatrix = m3.translation(translation[0],translation[1]);
+
+      // 改变原点的位移
+      var moveOriginMatrix = m3.translation(0.587 * 50,0.809 * 50);
       var matrix = m3.multiply(translationMatrix,rotationMatrix);
       matrix = m3.multiply(matrix,scaleMatrix);
-
-      // 改动一：false 变 true
-      gl.uniformMatrix3fv(matrixLoc,true,matrix);
+      matrix = m3.multiply(matrix,moveOriginMatrix);
+      gl.uniformMatrix3fv(matrixLoc,false,matrix);
       gl.uniform2f(resolutionLoc, gl.canvas.width, gl.canvas.height);
       gl.uniform4f(colorLoc, 0.0, 0.6, 1.0, 1.0);
       gl.drawArrays(gl.TRIANGLES, 0, 9);
@@ -184,33 +184,30 @@ void main() {
       var b21 = b[2 * 3 + 1];
       var b22 = b[2 * 3 + 2];
       return [
-      // 改动二：ba 变 ab
-      a00 * b00 + a01 * b10 + a02 * b20,
-      a00 * b01 + a01 * b11 + a02 * b21,
-      a00 * b02 + a01 * b12 + a02 * b22,
-      a10 * b00 + a11 * b10 + a12 * b20,
-      a10 * b01 + a11 * b11 + a12 * b21,
-      a10 * b02 + a11 * b12 + a12 * b22,
-      a20 * b00 + a21 * b10 + a22 * b20,
-      a20 * b01 + a21 * b11 + a22 * b21,
-      a20 * b02 + a21 * b12 + a22 * b22,
+      b00 * a00 + b01 * a10 + b02 * a20,
+      b00 * a01 + b01 * a11 + b02 * a21,
+      b00 * a02 + b01 * a12 + b02 * a22,
+      b10 * a00 + b11 * a10 + b12 * a20,
+      b10 * a01 + b11 * a11 + b12 * a21,
+      b10 * a02 + b11 * a12 + b12 * a22,
+      b20 * a00 + b21 * a10 + b22 * a20,
+      b20 * a01 + b21 * a11 + b22 * a21,
+      b20 * a02 + b21 * a12 + b22 * a22,
       ]
     },
-
-    // 改动三：三个矩阵都转置
     translation: function (tx, ty) {
       return [
-        1, 0, tx,
-        0, 1, ty,
-        0, 0, 1
+        1, 0, 0,
+        0, 1, 0,
+        tx, ty, 1
       ]
     },
     rotation: function (angleInRadians) {
       var s = Math.sin(angleInRadians);
       var c = Math.cos(angleInRadians);
       return [
-        c, s, 0,
-        -s, c, 0,
+        c, -s, 0,
+        s, c, 0,
         0, 0, 1
       ]
     },
